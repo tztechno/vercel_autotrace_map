@@ -124,6 +124,8 @@
             }
 
             function handleLocationError(error) {
+                console.log("Error code:", error.code);  // エラーメッセージをコンソールに出力
+
                 let errorMessage;
                 switch (error.code) {
                     case error.PERMISSION_DENIED:
@@ -167,6 +169,7 @@
             }
 
 
+
     function getPoints() {
         document.getElementById('loadingMessage').style.display = 'block';
 
@@ -180,14 +183,18 @@
             .then(data => {
                 console.log("Received data:", data);
 
-                // geometry が配列形式の場合、適切なGeoJSON形式に変換
-                data.features.forEach(feature => {
-                    if (Array.isArray(feature.geometry)) {
-                        feature.geometry = {
-                            type: 'Point',
-                            coordinates: feature.geometry
-                        };
+                // Validate GeoJSON structure
+                if (!data.type || data.type !== 'FeatureCollection' || !Array.isArray(data.features)) {
+                    throw new Error('Invalid GeoJSON structure');
+                }
+
+                // Ensure each feature has valid geometry
+                data.features = data.features.filter(feature => {
+                    if (!feature.geometry || !feature.geometry.type || !Array.isArray(feature.geometry.coordinates)) {
+                        console.warn('Invalid feature geometry, skipping:', feature);
+                        return false;
                     }
+                    return true;
                 });
 
                 if (geojsonLayer) {
@@ -199,150 +206,111 @@
                         if (feature.properties) {
                             let popupContent = '';
                             for (let key in feature.properties) {
-                                popupContent += `<strong>${key}:</strong> ${feature.properties[key]}<br>`;
+                                popupContent += `< strong > ${key}:</strong > ${feature.properties[key]} <br>`;
                             }
                             layer.bindPopup(popupContent);
                         }
                     }
                 }).addTo(map);
 
-                map.fitBounds(geojsonLayer.getBounds());
+                if (geojsonLayer.getLayers().length > 0) {
+                    map.fitBounds(geojsonLayer.getBounds());
+                } else {
+                    console.warn('No valid features to display');
+                }
+
                 document.getElementById('loadingMessage').style.display = 'none';
 
                 updateFilters(data);
             })
             .catch(error => {
-                console.error('Error fetching the data:', error);
+                console.error('Error processing the data:', error);
                 document.getElementById('loadingMessage').style.display = 'none';
-                alert('データの取得中にエラーが発生しました。後ほど再試行してください。');
+                alert('データの処理中にエラーが発生しました。データ形式を確認してください。');
             });
+    }
 
-                document.getElementById('loadingMessage').style.display = 'block';
+    
+        function updateFilters(data) {
+            const nameFilter = document.getElementById('nameFilter');
+            const dateFilter = document.getElementById('dateFilter');
+            const hourFilter = document.getElementById('hourFilter');
+            const names = new Set();
+            const dates = new Set();
+            const hours = new Set();
 
-                fetch(webAppUrl2)
-                    .then(response => {
-                        if (!response.ok) {
-                            throw new Error('Network response was not ok');
+            console.log("Updating filters with data:", data);
+
+            if (data && data.features && Array.isArray(data.features)) {
+                data.features.forEach(feature => {
+                    console.log("Processing feature:", feature);
+                    if (feature.properties) {
+                        if (feature.properties.name) {
+                            names.add(feature.properties.name);
                         }
-                        return response.json();
-                    })
-                    .then(data => {
-                        console.log("Received data:", data);
-                        console.log("Number of features:", data.features.length);
-                        console.log("Sample feature:", data.features[0]);
-
-                        // データ構造のデバッグ
-                        if (data.features.length > 0) {
-                            console.log("Properties of first feature:", data.features[0].properties);
-                            console.log("Datetime of first feature:", data.features[0].properties.datetime);
+                        if (feature.properties.date) {
+                            dates.add(feature.properties.date);
                         }
-
-
-
-                        if (geojsonLayer) {
-                            map.removeLayer(geojsonLayer);
+                        if (feature.properties.hour) {
+                            hours.add(feature.properties.hour);
                         }
+                    }
+                });
+            } else {
+                console.error("Invalid data structure for updating filters");
+            }
 
-                        geojsonLayer = L.geoJSON(data, {
-                            onEachFeature: function (feature, layer) {
-                                if (feature.properties) {
-                                    let popupContent = '';
-                                    for (let key in feature.properties) {
-                                        popupContent += `<strong>${key}:</strong> ${feature.properties[key]}<br>`;
-                                    }
-                                    layer.bindPopup(popupContent);
-                                }
-                            }
-                        }).addTo(map);
+            console.log("Unique names:", Array.from(names));
+            console.log("Unique dates:", Array.from(dates));
+            console.log("Unique hours:", Array.from(hours));
 
-                        map.fitBounds(geojsonLayer.getBounds());
-                        document.getElementById('loadingMessage').style.display = 'none';
+            updateFilterOptions(nameFilter, names, "すべての名前");
+            updateFilterOptions(dateFilter, dates, "すべての日付");
+            updateFilterOptions(hourFilter, hours, "すべての時間");
+        }
 
-                        updateFilters(data);
-                    })
-                    .catch(error => {
-                        console.error('Error fetching the data:', error);
-                        document.getElementById('loadingMessage').style.display = 'none';
-                        alert('データの取得中にエラーが発生しました。後ほど再試行してください。');
+
+            function updateFilterOptions(selectElement, optionsSet, allText) {
+                if (!selectElement) {
+                    console.error(`Element not found: ${selectElement.id}`);
+                    return;
+                }
+                console.log(`Updating ${selectElement.id} with options:`, Array.from(optionsSet));
+                selectElement.innerHTML = `<option value="">${allText}</option>`;
+                Array.from(optionsSet).sort().forEach(value => {
+                    const option = document.createElement('option');
+                    option.value = value;
+                    option.textContent = value;
+                    selectElement.appendChild(option);
+                });
+                console.log(`${selectElement.id} updated, new innerHTML:`, selectElement.innerHTML);
+            }
+
+            function filterPoints() {
+                const selectedName = document.getElementById('nameFilter').value;
+                const selectedDate = document.getElementById('dateFilter').value;
+                const selectedHour = document.getElementById('hourFilter').value;
+
+                if (geojsonLayer) {
+                    geojsonLayer.eachLayer(layer => {
+                        const properties = layer.feature.properties;
+                        const nameMatch = selectedName === '' || (properties && properties.name === selectedName);
+                        const dateMatch = selectedDate === '' || (properties && properties.date === selectedDate);
+                        const hourMatch = selectedHour === '' || (properties && properties.hour === selectedHour);
+
+                        if (nameMatch && dateMatch && hourMatch) {
+                            layer.addTo(map);
+                        } else {
+                            map.removeLayer(layer);
+                        }
                     });
-            }
-
-    function updateFilters(data) {
-        const nameFilter = document.getElementById('nameFilter');
-        const dateFilter = document.getElementById('dateFilter');
-        const hourFilter = document.getElementById('hourFilter');
-        const names = new Set();
-        const dates = new Set();
-        const hours = new Set();
-
-        console.log("Updating filters with data:", data);
-
-        data.features.forEach(feature => {
-            console.log("Processing feature:", feature);
-            if (feature.properties) {
-                if (feature.properties.name) {
-                    names.add(feature.properties.name);
-                }
-                if (feature.properties.date) {
-                    dates.add(feature.properties.date);
-                }
-                if (feature.properties.hour) {
-                    hours.add(feature.properties.hour);
                 }
             }
-        });
-
-        console.log("Unique names:", Array.from(names));
-        console.log("Unique dates:", Array.from(dates));
-        console.log("Unique hours:", Array.from(hours));
-
-        updateFilterOptions(nameFilter, names, "すべての名前");
-        updateFilterOptions(dateFilter, dates, "すべての日付");
-        updateFilterOptions(hourFilter, hours, "すべての時間");
-    }
-
-    function updateFilterOptions(selectElement, optionsSet, allText) {
-        if (!selectElement) {
-            console.error(`Element not found: ${selectElement.id}`);
-            return;
-        }
-        console.log(`Updating ${selectElement.id} with options:`, Array.from(optionsSet));
-        selectElement.innerHTML = `<option value="">${allText}</option>`;
-        Array.from(optionsSet).sort().forEach(value => {
-            const option = document.createElement('option');
-            option.value = value;
-            option.textContent = value;
-            selectElement.appendChild(option);
-        });
-        console.log(`${selectElement.id} updated, new innerHTML:`, selectElement.innerHTML);
-    }
-
-    function filterPoints() {
-        const selectedName = document.getElementById('nameFilter').value;
-        const selectedDate = document.getElementById('dateFilter').value;
-        const selectedHour = document.getElementById('hourFilter').value;
-
-        if (geojsonLayer) {
-            geojsonLayer.eachLayer(layer => {
-                const properties = layer.feature.properties;
-                const nameMatch = selectedName === '' || (properties && properties.name === selectedName);
-                const dateMatch = selectedDate === '' || (properties && properties.date === selectedDate);
-                const hourMatch = selectedHour === '' || (properties && properties.hour === selectedHour);
-
-                if (nameMatch && dateMatch && hourMatch) {
-                    layer.addTo(map);
-                } else {
-                    map.removeLayer(layer);
-                }
-            });
-        }
-    }
 
 
 
             document.addEventListener("DOMContentLoaded", function () {
                 startTracking();
-                getPoints();
             });
 
 
