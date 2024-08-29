@@ -164,8 +164,8 @@
                     map.removeLayer(currentMarker);
                 }
                 currentMarker = L.marker([lat0, lon0]).addTo(map)
-                    .bindPopup("<b>HERE!</b>")
-                    .openPopup();
+                      .bindPopup("<b>HERE!</b>")
+                //    .openPopup();
             }
 
 
@@ -363,13 +363,18 @@
                 const selectedName = document.getElementById('nameFilter').value;
                 const selectedDate = document.getElementById('dateFilter').value;
                 const selectedHour = document.getElementById('hourFilter').value;
+                console.log("Filtering with:", { selectedName, selectedDate, selectedHour });
+                console.log("GeoJSON Layer:", geojsonLayer);
 
                 if (geojsonLayer) {
                     geojsonLayer.eachLayer(layer => {
                         const properties = layer.feature.properties;
                         const nameMatch = selectedName === '' || (properties && properties.name === selectedName);
                         const dateMatch = selectedDate === '' || (properties && properties.date === selectedDate);
-                        const hourMatch = selectedHour === '' || (properties && properties.hour === selectedHour);
+                        const hourMatch = selectedHour === '' || (properties && properties.hour.toString() === selectedHour);
+
+                        console.log("Checking feature:", properties);
+                        console.log("Matches:", { nameMatch, dateMatch, hourMatch });
 
                         if (nameMatch && dateMatch && hourMatch) {
                             layer.addTo(map);

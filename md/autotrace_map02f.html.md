@@ -154,31 +154,33 @@
             }
 
             currentMarker = L.marker([lat0, lon0]).addTo(map)
-                .bindPopup("<b>HERE!</b>")
-                .openPopup();
+                //.bindPopup("<b>HERE!</b>")
+                //.openPopup();
 
             var geo_details = `緯度:${lat0}\n経度:${lon0}\n高度:${position.coords.altitude}\n位置精度:${position.coords.accuracy}\n高度精度:${position.coords.altitudeAccuracy}\n移動方向:${position.coords.heading}\n速度:${position.coords.speed}\n取得時刻:${new Date(position.timestamp).toLocaleString()}\n取得回数:${++num}\n残り時間:${remainingTime}分`;
 
             document.getElementById('position_view').innerHTML = geo_details;
         }
 
-        function handleLocationError(error) {
-            let errorMessage;
-            switch (error.code) {
-                case error.PERMISSION_DENIED:
-                    errorMessage = "位置情報の利用が許可されていません。";
-                    break;
-                case error.POSITION_UNAVAILABLE:
-                    errorMessage = "位置情報が取得できません。";
-                    break;
-                case error.TIMEOUT:
-                    errorMessage = "位置情報の取得がタイムアウトしました。";
-                    break;
-                default:
-                    errorMessage = "位置情報の取得中にエラーが発生しました。";
-            }
-            alert(errorMessage);
+    function handleLocationError(error) {
+        console.log("Error code:", error.code);  // エラーメッセージをコンソールに出力
+
+        let errorMessage;
+        switch (error.code) {
+            case error.PERMISSION_DENIED:
+                errorMessage = "位置情報の利用が許可されていません。";
+                break;
+            case error.POSITION_UNAVAILABLE:
+                errorMessage = "位置情報が取得できません。";
+                break;
+            case error.TIMEOUT:
+                errorMessage = "位置情報の取得がタイムアウトしました。";
+                break;
+            default:
+                errorMessage = "位置情報の取得中にエラーが発生しました。";
         }
+        alert(errorMessage);
+    }
 
         function sendLocationToGAS() {
             var time = new Date().toISOString();
@@ -190,8 +192,8 @@
                 time: time,
                 name: name
             };
-            // direct write　バージョン 12（2024/08/28 12:44）
-            fetch('https://script.google.com/macros/s/AKfycbwZW0h1niT_Hltmu1bVoErwuhMmRLjgMOdnf9P4NL12UjRNdfjWuPRoA7kczIRdk1Cx_Q/exec', {
+            // direct write　バージョン 13（2024/08/28 12:52）
+            fetch('https://script.google.com/macros/s/AKfycbzhzBgCfCIN-IRCQa1tO51HEdt2ucBb15L5DuNxWU991zRtd_aPAk0SkUb0zgYLpb4m5w/exec', {
                 method: 'POST',
                 mode: 'no-cors',
                 cache: 'no-cache',

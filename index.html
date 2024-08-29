@@ -154,8 +154,8 @@
             }
 
             currentMarker = L.marker([lat0, lon0]).addTo(map)
-                .bindPopup("<b>HERE!</b>")
-                .openPopup();
+            //.bindPopup("<b>HERE!</b>")
+            //.openPopup();
 
             var geo_details = `緯度:${lat0}\n経度:${lon0}\n高度:${position.coords.altitude}\n位置精度:${position.coords.accuracy}\n高度精度:${position.coords.altitudeAccuracy}\n移動方向:${position.coords.heading}\n速度:${position.coords.speed}\n取得時刻:${new Date(position.timestamp).toLocaleString()}\n取得回数:${++num}\n残り時間:${remainingTime}分`;
 
@@ -163,6 +163,8 @@
         }
 
         function handleLocationError(error) {
+            console.log("Error code:", error.code);  // エラーメッセージをコンソールに出力
+
             let errorMessage;
             switch (error.code) {
                 case error.PERMISSION_DENIED:
