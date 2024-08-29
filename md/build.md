@@ -5,3 +5,4 @@ git pull origin master
 git add .
 git commit -m "2024-08-29"
 git push -u origin master
+git push -f origin master
